@@ -124,7 +124,7 @@ int verif_combi_verticale(int grille[LIGNES][COLONNES]) {
 }
 
 
-
+// test ?
 
 int main(void) {
     // au début du programme, sinon vous obtiendrez la même grille à chaque exécution.
