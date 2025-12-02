@@ -141,7 +141,7 @@ int main(void) {
 
         // Si au moins une combinaison a été trouvée (retour de 0)
         if (combi_h == 0 || combi_v == 0) {
-            printf("\nCombinaison(s) trouvée(s) ! Application de la gravité.\n");
+            printf("\nC33ombinaison(s) trouvée(s) ! Application de la gravité.\n");
             gravite(grille);
             printf("Remplissage des cases vides...\n");
             modif_grille(grille);
