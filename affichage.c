@@ -81,7 +81,7 @@ char lireInputClavier(void) {
 }
 
 
-
+/*
 int main() {
     int plateau[9][9] = {
         {0,1,2,3,4,0,1,2,3},
@@ -141,3 +141,4 @@ int main() {
     printf("Fin du test clavier.\n");
     return 0;
 }
+*/

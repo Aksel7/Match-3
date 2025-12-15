@@ -123,7 +123,7 @@ int verif_combi_verticale(int grille[LIGNES][COLONNES]) {
     return !combi_trouvee; // Retourne 1 si aucune combi (combi_trouvee=0), sinon 0
 }
 
-
+void 
 // test ?
 
 int main(void) {
@@ -141,7 +141,7 @@ int main(void) {
 
         // Si au moins une combinaison a été trouvée (retour de 0)
         if (combi_h == 0 || combi_v == 0) {
-            printf("\nC33ombinaison(s) trouvée(s) ! Application de la gravité.\n");
+            printf("\nCombinaison(s) trouvée(s) ! Application de la gravité.\n");
             gravite(grille);
             printf("Remplissage des cases vides...\n");
             modif_grille(grille);
