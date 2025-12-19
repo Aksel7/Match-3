@@ -1,107 +1,113 @@
 #include <stdio.h>
+#include <string.h>
 #include "partie.h"
 
-#define VIES_INIT 10  // Nombre initial de vies
+#define VIES_INIT 10
+#define FICHIER_SAUVEGARDE "sauvegarde.txt"
 
-
-
-// Initialiser les objectifs d'un niveau    _______________________________________
+// ------------------ CONTRAT ------------------
 
 void initialiserContrat(int niveau) {
-    printf("\n===== Initialisation du niveau %d =====\n", niveau);
-    printf("Objectifs du niveau %d : aligner 3 bonbons ou plus\n", niveau);
-    printf("=====  Bonne chance a toi !  =====\n\n");
+    printf("\n===== Niveau %d =====\n", niveau);
+    printf("Objectif : aligner des items\n");
+    printf("=====================\n");
 }
 
+// ------------------ SAUVEGARDE ------------------
 
+void sauvegarderPartie(char pseudo[], int niveau, int vies) {
+    FILE *f = fopen(FICHIER_SAUVEGARDE, "a");
 
+    if (f == NULL) {
+        printf("Erreur ouverture fichier sauvegarde\n");
+        return;
+    }
 
-// Sauvegarder la progression de la partie     ____________________________________
+    fprintf(f, "%s %d %d\n", pseudo, niveau, vies);
+    fclose(f);
 
-void sauvegarderPartie(int niveau, int vies) {
-    printf("\n--- Sauvegarde ---\n");
-    printf("Partie sauvegardee : Niveau %d | Vies restantes : %d\n", niveau, vies);
-    printf("/////////////////////////////\n\n");
+    printf("Sauvegarde reussie !\n");
 }
 
+// ------------------ CHARGEMENT ------------------
 
+int chargerSauvegarde(char pseudo[], int *niveau, int *vies) {
+    FILE *f = fopen(FICHIER_SAUVEGARDE, "r");
+    char pseudoLu[50];
+    int niveauLu, viesLues;
 
+    if (f == NULL) {
+        printf("Aucune sauvegarde trouvee.\n");
+        return 0;
+    }
 
-// Boucle d'un niveau     _________________________________________________________
+    while (fscanf(f, "%s %d %d", pseudoLu, &niveauLu, &viesLues) == 3) {
+        if (strcmp(pseudoLu, pseudo) == 0) {
+            *niveau = niveauLu;
+            *vies = viesLues;
+            fclose(f);
+            return 1;
+        }
+    }
+
+    fclose(f);
+    return 0;
+}
+
+// ------------------ JEU ------------------
 
 void jouerNiveau(int niveau, int *vies) {
-    printf("\n==============================\n");
-    printf("           NIVEAU %d\n", niveau);
-    printf("==============================\n");
-
-    // Initialiser le contrat du niveau
+    printf("\n--- NIVEAU %d ---\n", niveau);
     initialiserContrat(niveau);
 
-    // Simulation du jeu
-    printf("Simulation du jeu du niveau...\n");
-    printf("Vous perdez une vie pour tester la mecanique.\n\n");
+    printf("Simulation du niveau...\n");
+    printf("Perte d'une vie pour test.\n");
 
-    (*vies)--;  // iciii On retire une vie pour tester
+    (*vies)--;
 
     if (*vies > 0) {
-        printf("Passage au niveau suivant !\n");
-        printf("Vies restantes : %d\n", *vies);
+        printf("Niveau termine. Vies restantes : %d\n", *vies);
     } else {
-        printf("Vous n'avez plus de vies. Partie terminee.\n");
+        printf("Plus de vies !\n");
     }
-
-    // Proposition de sauvegarde
-    int choixSauvegarde;
-    printf("\nVoulez-vous sauvegarder la partie ?\n1=Oui, 0=Non\n: ");
-    scanf("%d", &choixSauvegarde);
-
-    if (choixSauvegarde == 1) {
-        sauvegarderPartie(niveau, *vies);
-    } else {
-        printf("\nSauvegarde annulee.\n");
-    }
-
-    printf("\n------------------------------------\n");
 }
 
-
-
-
-// Boucle principale de la partie __________________________________________________
+// ------------------ PARTIE ------------------
 
 void jouerPartie() {
-    int niveau = 1;      // Niveau de départ
-    int vies = VIES_INIT;  // Vies initiales
+    char pseudo[50];
+    int choix;
+    int niveau = 1;
+    int vies = VIES_INIT;
 
-    printf("\n>>>>>>> Demarrage d'une nouvelle partie <<<<<<<\n");
+    printf("Entrez votre pseudo : ");
+    scanf("%s", pseudo);
 
-    // Boucle tant que le joueur a des vies
+    printf("\n1. Nouvelle partie\n2. Reprendre partie\nChoix : ");
+    scanf("%d", &choix);
+
+    if (choix == 2) {
+        if (!chargerSauvegarde(pseudo, &niveau, &vies)) {
+            printf("Sauvegarde introuvable, nouvelle partie lancee.\n");
+            niveau = 1;
+            vies = VIES_INIT;
+        }
+    }
+
     while (vies > 0) {
         jouerNiveau(niveau, &vies);
+
+        if (vies <= 0) break;
+
+        printf("\nSauvegarder ? (1=oui / 0=non) : ");
+        scanf("%d", &choix);
+
+        if (choix == 1) {
+            sauvegarderPartie(pseudo, niveau, vies);
+        }
+
         niveau++;
     }
 
-    printf("\n=== Fin de la partie ===\n\n");
-}
-
-
-
-
-// Charger une partie sauvegardee _________________________________________________
-
-void chargerSauvegarde() {
-    int niveau = 2; // exemple de niveau sauvegarde
-    int vies = 2;   // exemple de vies sauvegardees
-
-    printf("\n>>> Chargement de la sauvegarde <<<\n");
-    printf("Fonction chargerSauvegarde() appelee\n");
-    printf("Reprise au niveau %d avec %d vies\n", niveau, vies);
-
-    // Relance la partie à partir du niveau et vies sauvegardes
-    while (vies > 0) {
-        jouerNiveau(niveau, &vies);
-        niveau++;
-    }
-
-    printf("\n=== Fin de la partie sauvegardee ===\n\n");
+    printf("\nFin de la partie.\n");
 }
