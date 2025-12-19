@@ -81,7 +81,7 @@ char lireInputClavier(void) {
 }
 
 
-/*
+
 int main() {
     int plateau[9][9] = {
         {0,1,2,3,4,0,1,2,3},
@@ -104,7 +104,7 @@ int main() {
     int objectifs[5] = {3, 4, 5, 2, 1};
 
     char* nomsPierres[5] = {
-        "Émeraude",
+        "Emeraude",
         "Saphir",
         "Rubis",
         "Diamant",
@@ -141,4 +141,3 @@ int main() {
     printf("Fin du test clavier.\n");
     return 0;
 }
-*/

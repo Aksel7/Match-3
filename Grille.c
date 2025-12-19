@@ -123,36 +123,101 @@ int verif_combi_verticale(int grille[LIGNES][COLONNES]) {
     return !combi_trouvee; // Retourne 1 si aucune combi (combi_trouvee=0), sinon 0
 }
 
-void 
-// test ?
+// ... (Vos autres fonctions restent identiques) ...
 
-int main(void) {
-    // au début du programme, sinon vous obtiendrez la même grille à chaque exécution.
-    srand(time(NULL)); 
-
-    int grille[LIGNES][COLONNES];
-    creation_grille(grille);
-    afficher_grille(grille);
-
+// Fonction utilitaire pour gérer la cascade (verif -> gravite -> remplissage)
+void resoudre_plateau(int grille[LIGNES][COLONNES]) {
     int combi_v, combi_h;
     do {
         combi_h = verif_combi_horizontale(grille);
         combi_v = verif_combi_verticale(grille);
 
-        // Si au moins une combinaison a été trouvée (retour de 0)
         if (combi_h == 0 || combi_v == 0) {
-            printf("\nCombinaison(s) trouvée(s) ! Application de la gravité.\n");
+            printf("\n--- Combinaison detectee ! ---\n");
             gravite(grille);
-            printf("Remplissage des cases vides...\n");
-            modif_grille(grille);
+            modif_grille(grille); // Remplit les cases vides
             afficher_grille(grille);
+            printf("------------------------------\n");
+            // On recommence la boucle car la gravité a pu créer de nouvelles combos
         }
-
-    // On continue tant qu'on trouve des combinaisons
     } while (combi_h == 0 || combi_v == 0);
-
-    printf("\nPlus aucune combinaison possible. Fin de la boucle.\n");
-    afficher_grille(grille);
-    
-    return (0);
 }
+void echanger_cases(int grille[LIGNES][COLONNES]) {
+    int , c;
+    char direction; // z, q, s, d pour haut, gauche, bas, droite
+    
+    printf("\n--- A VOUS DE JOUER ---\n");
+    printf("Entrez la ligne (0-8) et la colonne (0-8) de la case a deplacer : ");
+    if (scanf("%d %d", &l, &c) != 2) {
+        // Vidage du buffer si saisie incorrecte
+        while(getchar() != '\n'); 
+        return;
+    }
+
+    // Vérification que la case selectionnée est dans la grille
+    if (l < 0 || l >= LIGNES || c < 0 || c >= COLONNES) {
+        printf("ERREUR : Coordonnees hors limites !\n");
+        return;
+    }
+
+    printf("Direction (z:Haut, s:Bas, q:Gauche, d:Droite) : ");
+    // L'espace avant %c est CRUCIAL pour ignorer le retour à la ligne précédent
+    scanf(" %c", &direction); 
+
+    int nl = l, nc = c; // Nouvelles coordonnées
+
+    // Calcul de la case cible
+    switch(direction) {
+        case 'z': nl--; break;
+        case 's': nl++; break;
+        case 'q': nc--; break;
+        case 'd': nc++; break;
+        default: printf("Direction inconnue.\n"); return;
+    }
+
+    // Vérification que la CIBLE est dans la grille
+    if (nl >= 0 && nl < LIGNES && nc >= 0 && nc < COLONNES) {
+        // Echange simple
+        int temp = grille[l][c];
+        grille[l][c] = grille[nl][nc];
+        grille[nl][nc] = temp;
+        printf("Deplacement effectue !\n");
+    } else {
+        printf("Mouvement impossible (bord du tableau).\n");
+    }
+}
+
+int main() {
+    srand(time(NULL)); 
+
+    int grille[LIGNES][COLONNES];
+    int continuer = 1;
+
+    // 1. Initialisation
+    creation_grille(grille);
+    
+    // 2. Premier nettoyage (pour ne pas commencer avec des lignes déjà faites)
+    resoudre_plateau(grille);
+
+    printf("\nLE JEU COMMENCE !\n");
+    afficher_grille(grille);
+
+    // 3. Boucle principale du jeu
+    while (continuer) {
+        // A. Le joueur joue
+        echanger_cases(grille);
+        
+        // B. On affiche le résultat du mouvement (avant résolution)
+        printf("\nResultat du mouvement :\n");
+        afficher_grille(grille);
+
+        // C. On résout les combinaisons créées par le joueur
+        resoudre_plateau(grille);
+
+        printf("\nContinuer a jouer ? (1: Oui, 0: Non) : ");
+        scanf("%d", &continuer);
+    }
+
+    printf("Fin de partie. Merci !\n");
+    return 0;
+} 
