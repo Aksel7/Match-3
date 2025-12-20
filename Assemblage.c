@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "affichage_console.h"
+#include "affichage.h"
 
 // --- CONSTANTES ---
 #define LIGNES 20      
