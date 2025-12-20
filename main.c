@@ -8,6 +8,7 @@
 #include "config.h"
 #include "jeu.h"
 #include "affichage.h"
+#include "musique.h"
 
 // sauvegarde
 
@@ -41,7 +42,7 @@ int chargerSauvegarde(char pseudo[], int *niveau, int *vies) {
 
 // niveau
 
-int lancerNiveau(char pseudo[], int niveau, int *vies) {
+int lancerNiveau(char pseudo[], int niveau, int *vies, int musiqueActive) {
     int grille[LIGNES][COLONNES];
     int objectifs[6] = {0};
     int progression[6] = {0};
@@ -78,6 +79,9 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
     hide_cursor(); 
     clrscr(); 
 
+    // musique si activee
+    if (musiqueActive) lancerMusique();
+
     while (running && coups > 0 && tempsRestant > 0) {
 
         // timer
@@ -91,6 +95,7 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
 
         // verif win
         if (verif_victoire(objectifs, progression)) {
+            if (musiqueActive) arreterMusique();
             clrscr();
             if (tempsRestant < 0) tempsRestant = 0;
             
@@ -124,6 +129,7 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
 
             switch (touche) {
                 case 'p': // pause
+                    if (musiqueActive) arreterMusique();
                     show_cursor();
                     return 0; 
                 
@@ -134,27 +140,22 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
 
                 case ' ':
                     if (!selActive) {
-                        // select
                         selActive = 1; 
                         sX = cX; sY = cY;
                     } else {
-                        // deplacement
                         int dist = abs(cX - sX) + abs(cY - sY);
                         
                         if (dist == 1) { 
-                            // swap
                             int tmp = grille[cX][cY]; 
                             grille[cX][cY] = grille[sX][sY]; 
                             grille[sX][sY] = tmp;
 
-                            // resolution
                             int combo = resoudre_plateau(grille, progression);
 
                             if (combo) {
                                 coups--; 
                                 selActive = 0;
                             } else {
-                                // fail, retour
                                 tmp = grille[cX][cY]; 
                                 grille[cX][cY] = grille[sX][sY]; 
                                 grille[sX][sY] = tmp;
@@ -172,6 +173,7 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
     }
 
     // perdu
+    if (musiqueActive) arreterMusique();
     show_cursor();
     printf("\n\n");
     text_color(LIGHTRED);
@@ -192,6 +194,7 @@ int main() {
     int vies = VIES_INIT;
     int choix;
     int continuerMenu = 1;
+    int musiqueActive = 1; // par defaut ON
 
     SetConsoleTitle("ECE HEROES - Match 3");
 
@@ -200,7 +203,13 @@ int main() {
         text_color(YELLOW);
         printf("--- ECE HEROES : MENU PRINCIPAL ---\n");
         text_color(WHITE);
-        printf("1. Lire les regles\n2. Nouvelle Partie\n3. Charger\n4. Quitter\n\nChoix : ");
+        printf("1. Lire les regles\n2. Nouvelle Partie\n3. Charger\n4. Quitter\n");
+        
+        // affichage etat musique
+        if (musiqueActive) printf("5. Musique : [ON]\n");
+        else printf("5. Musique : [OFF]\n");
+        
+        printf("\nChoix : ");
         
         if (scanf("%d", &choix) != 1) {
             while(getchar() != '\n');
@@ -228,13 +237,17 @@ int main() {
                 break;
             case 4: 
                 return 0;
+            case 5:
+                musiqueActive = !musiqueActive; // switch on/off
+                break;
             default: 
                 break;
         }
     }
 
     while (vies > 0) {
-        if (lancerNiveau(pseudo, niveau, &vies)) {
+        // on passe l'info musique au niveau
+        if (lancerNiveau(pseudo, niveau, &vies, musiqueActive)) {
             // gagne
             clrscr();
             printf("Sauvegarder ? (1=Oui/0=Non) : ");

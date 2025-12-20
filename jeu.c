@@ -246,7 +246,7 @@ void genererObjectifs(int niveau, int objectifs[6]) {
     int total_cases = LIGNES * COLONNES;
     
     // difficulte
-    float ratio = 0.10 + (niveau * 0.025); 
+    float ratio = 0.10 + (niveau * 0.35); 
     if(ratio > 0.8) ratio = 0.8;
     
     int total_a_vider = total_cases * ratio;
