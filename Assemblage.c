@@ -10,11 +10,12 @@
 #define FICHIER_SAUVEGARDE "sauvegarde.txt"
 #define VIES_INIT 3
 
-// Noms pour l'affichage textuel des objectifs
-const char* NOM_COULEURS[] = {"", "EMERAUDE", "RUBIS", "SAPHIR", "TOPAZE", "DIAMENT"};
+// --- NOMS ET COULEURS DES PIERRES PRECIEUSES ---
+// Index 0 (Vide), 1 (Vert), 2 (Rouge), 3 (Bleu), 4 (Jaune), 5 (Cyan/Diamant)
+const char* NOM_PIERRES[] = {"", "EMERAUDE", "RUBIS", "SAPHIR", "TOPAZE", "DIAMANT"};
 
-// MAPPING DES COULEURS
-const int CODE_COULEURS[] = { BLACK, LIGHTGREEN, RED, BLUE, YELLOW, LIGHTCYAN };
+// MAPPING DES COULEURS (Doit correspondre à l'ordre ci-dessus)
+const int CODE_COULEURS[] = { BLACK, LIGHTGREEN, LIGHTRED, LIGHTBLUE, YELLOW, LIGHTCYAN };
 
 // ==========================================
 // PARTIE 1 : LOGIQUE DU PLATEAU
@@ -54,28 +55,23 @@ void gravite(int grille[LIGNES][COLONNES]) {
 
 // --- EFFETS SPÉCIAUX ---
 
-// 1. EFFET BOMBE DE ZONE (Remplace la suppression couleur)
+// 1. EFFET BOMBE DE ZONE (Rayon 1 = 3x3 cases)
 void effet_bombe(int grille[LIGNES][COLONNES], int progression[6], int cX, int cY) {
-    // Calcul du rayon en fonction de la taille de la grille
-    // Rayon 2 = Carré de 5x5 cases
-    // Rayon 3 = Carré de 7x7 cases (pour les grandes grilles)
-    int rayon = (LIGNES > 15 && COLONNES > 15) ? 3 : 2;
-
+    int rayon = 1; 
     for (int i = cX - rayon; i <= cX + rayon; i++) {
         for (int j = cY - rayon; j <= cY + rayon; j++) {
-            // Vérification des limites du tableau pour ne pas planter
             if (i >= 0 && i < LIGNES && j >= 0 && j < COLONNES) {
                 if (grille[i][j] != 0) {
                     int type = grille[i][j] % 10;
-                    progression[type]++; // On compte les points
-                    grille[i][j] = 0;    // On détruit
+                    progression[type]++; 
+                    grille[i][j] = 0;    
                 }
             }
         }
     }
 }
 
-// 2. EFFET CROIX DE 9
+// 2. EFFET CROIX
 void effet_croix_explosion(int grille[LIGNES][COLONNES], int progression[6], int cX, int cY) {
     for (int j = 0; j < COLONNES; j++) { // Ligne
         if (grille[cX][j] != 0) {
@@ -91,7 +87,7 @@ void effet_croix_explosion(int grille[LIGNES][COLONNES], int progression[6], int
     }
 }
 
-// 3. EFFET LIGNE DE 6 (Reste suppression couleur pour variété)
+// 3. EFFET LIGNE DE 6
 void effet_supprimer_couleur(int grille[LIGNES][COLONNES], int progression[6], int typePierre) {
     for (int i = 0; i < LIGNES; i++) {
         for (int j = 0; j < COLONNES; j++) {
@@ -102,7 +98,7 @@ void effet_supprimer_couleur(int grille[LIGNES][COLONNES], int progression[6], i
     }
 }
 
-// MOTEUR DE RESOLUTION CORRIGÉ
+// MOTEUR DE RESOLUTION
 int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
     int modif = 0;
     int items_a_detruire[LIGNES][COLONNES] = {0}; 
@@ -121,27 +117,23 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
             int lenV = 0, l = i;
             while (l < LIGNES && (grille[l][j] % 10) == typeBase) { lenV++; l++; }
 
-            // A. Ligne de 6+ (Suppression Couleur)
+            // A. Ligne de 6+
             if (lenH >= 6 || lenV >= 6) {
                 effet_supprimer_couleur(grille, progression, typeBase);
-                // CORRECTION : On applique la gravité et on remplit AVANT de quitter
                 gravite(grille);
                 modif_grille(grille);
                 resoudre_plateau(grille, progression); 
                 return 1;
             }
-            
             // B. Croix de 9
             if (lenH >= 5 && lenV >= 5) {
                 effet_croix_explosion(grille, progression, i, j);
-                // CORRECTION ICI AUSSI
                 gravite(grille);
                 modif_grille(grille);
                 resoudre_plateau(grille, progression);
                 return 1;
             }
-
-            // C. Ligne de 5 : Création BOMBE (Pas de return ici, c'est bon)
+            // C. Ligne de 5 : Création BOMBE
             if (lenH == 5) {
                 for(int m=0; m<lenH; m++) items_a_detruire[i][j+m] = 1;
                 creation_special[i][j+2] = typeBase + 10; 
@@ -164,7 +156,6 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
                     }
                     if (a_une_bombe) {
                         effet_bombe(grille, progression, i, j + 1);
-                        // CORRECTION ICI AUSSI
                         gravite(grille);
                         modif_grille(grille);
                         resoudre_plateau(grille, progression);
@@ -180,7 +171,6 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
                     }
                     if (a_une_bombe) {
                         effet_bombe(grille, progression, i + 1, j);
-                        // CORRECTION ICI AUSSI
                         gravite(grille);
                         modif_grille(grille);
                         resoudre_plateau(grille, progression);
@@ -189,7 +179,6 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
                     modif = 1;
                 }
             }
-            
             // Carré 2x2
             if (i < LIGNES-1 && j < COLONNES-1) {
                 if ((grille[i][j]%10) == typeBase && (grille[i+1][j]%10) == typeBase &&
@@ -202,7 +191,6 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
         }
     }
 
-    // Bloc standard (exécuté pour les Match 3 simples)
     if (modif) {
         for (int i = 0; i < LIGNES; i++) {
             for (int j = 0; j < COLONNES; j++) {
@@ -224,45 +212,38 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
     }
     return modif;
 }
+
 // ==========================================
-// PARTIE 2 : OBJECTIFS
+// PARTIE 2 : OBJECTIFS (3 ou 4 PIERRES)
 // ==========================================
 
 void genererObjectifs(int niveau, int objectifs[6]) {
     for(int k=0; k<6; k++) objectifs[k] = 0;
+    
     int total_cases = LIGNES * COLONNES;
+    
+    // Difficulté progressive
+    float ratio = 0.15 + (niveau * 0.05); // 15% puis augmente
+    if(ratio > 0.8) ratio = 0.8;
+    int total_a_vider = total_cases * ratio;
+    if (total_a_vider < 6) total_a_vider = 6;
 
-    if (niveau == 1) {
-        int total_a_vider = total_cases * 0.30;
-        objectifs[2] = total_a_vider / 2; 
-        objectifs[4] = total_a_vider / 2; 
-    }
-    else if (niveau == 2) {
-        int total_a_vider = total_cases * 0.45;
-        objectifs[1] = total_a_vider / 2; 
-        objectifs[3] = total_a_vider / 2; 
-    }
-    else if (niveau < 5) {
-        float ratio = 0.50 + (0.10 * (niveau - 3));
-        int total_a_vider = total_cases * ratio;
-        int c1 = (rand() % 5) + 1;
-        int c2 = (rand() % 5) + 1;
-        while(c2 == c1) c2 = (rand() % 5) + 1;
+    // Nombre d'objectifs (couleurs différentes)
+    int nb_objectifs = 2; // Niveau 1-2
+    if (niveau >= 3) nb_objectifs = 3; // Niveau 3-6 (3 Pierres)
+    if (niveau >= 7) nb_objectifs = 4; // Niveau 7+ (4 Pierres)
 
-        objectifs[c1] = total_a_vider / 2;
-        objectifs[c2] = total_a_vider / 2;
-    }
-    else {
-        float ratio = 0.80 + (0.15 * (niveau - 5)); 
-        int total_a_vider = total_cases * ratio;
-        int c1 = (rand() % 5) + 1; int c2 = (rand() % 5) + 1;
-        while(c2 == c1) c2 = (rand() % 5) + 1;
-        int c3 = (rand() % 5) + 1;
-        while(c3 == c1 || c3 == c2) c3 = (rand() % 5) + 1;
+    int couleurs_choisies[6] = {0};
+    int count = 0;
 
-        objectifs[c1] = total_a_vider / 3;
-        objectifs[c2] = total_a_vider / 3;
-        objectifs[c3] = total_a_vider / 3;
+    while(count < nb_objectifs) {
+        int c = (rand() % 5) + 1;
+        if(couleurs_choisies[c] == 0) {
+            couleurs_choisies[c] = 1;
+            objectifs[c] = total_a_vider / nb_objectifs;
+            if(objectifs[c] < 1) objectifs[c] = 1;
+            count++;
+        }
     }
 }
 
@@ -279,7 +260,7 @@ int verif_victoire(int objectifs[6], int progression[6]) {
 
 void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int objectifs[6], int progression[6], int tempsRestant) {
     text_color(WHITE);
-    printf("=========================================================\n");
+    printf("====================================================\n"); // Ligne raccourcie
     printf(" JOUEUR: %s | NIV: %d | VIES: %d | COUPS: %d | TEMPS: ", pseudo, niveau, vies, coups);
     
     if (tempsRestant <= 10) text_color(LIGHTRED);
@@ -287,14 +268,14 @@ void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int object
     printf("%ds", tempsRestant);
     text_color(WHITE); 
     
-    printf("\n=========================================================\n");
-    printf(" OBJECTIFS :\n");
+    printf("\n====================================================\n"); // Ligne raccourcie
+    printf(" CONTRAT (Pierres a collecter) :\n");
     
     int a_un_objectif = 0;
     for (int i = 1; i <= 5; i++) {
         if (objectifs[i] > 0) {
             text_color(CODE_COULEURS[i]);
-            printf("  %s", NOM_COULEURS[i]);
+            printf("  %s", NOM_PIERRES[i]); // Utilise NOM_PIERRES (Emeraude, etc.)
             text_color(WHITE);
             printf(" : %d / %d", progression[i], objectifs[i]);
             if (progression[i] >= objectifs[i]) {
@@ -306,41 +287,39 @@ void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int object
     }
     text_color(WHITE);
     if(!a_un_objectif) printf("  (Aucun objectif)\n");
-    printf("---------------------------------------------------------\n");
-    printf(" [Z/Q/S/D] Deplacer | [ESPACE] Selectionner | [P] Pause/Quitter\n");
+    printf("----------------------------------------------------\n");
+    printf(" [Z/Q/S/D] Deplacer | [ESPACE] Selection | [P] Pause\n");
 }
 
 void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive, int selX, int selY) {
     printf("\n");
     for (int i = 0; i < LIGNES; i++) {
-        printf("    "); 
+        printf("   "); 
         for (int j = 0; j < COLONNES; j++) {
             
             int valeur = grille[i][j];
             int type = valeur % 10;       
-            int estSpecial = (valeur > 10); // BOMBE !
+            int estSpecial = (valeur > 10); 
 
             int couleur = CODE_COULEURS[type];
             
             int estCurseur = (i == cX && j == cY);
             int estSelectionne = (selActive && i == selX && j == selY);
 
-            // Gestion Curseur
+            // Curseur
             text_color(WHITE);
             if (estSelectionne && estCurseur) printf("<");
             else if (estCurseur) printf("[");
             else if (estSelectionne) printf("*");
             else printf(" "); 
 
-            // Affichage Chiffre
+            // Chiffre
             if (estSpecial) {
-                // BOMBE : Fond coloré
                 bg_color(couleur); 
                 text_color(WHITE);
                 printf("%d", type); 
             } 
             else {
-                // NORMAL
                 bg_color(BLACK);
                 text_color(couleur);
                 printf("%d", type);
@@ -353,7 +332,7 @@ void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive
             else if (estSelectionne) printf("*");
             else printf(" "); 
         }
-        printf("\n\n"); 
+        printf("\n"); // Enlevé le double \n pour réduire la hauteur et éviter le scrolling
     }
     text_color(WHITE);
 }
@@ -366,8 +345,8 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
     int grille[LIGNES][COLONNES];
     int total_cases = LIGNES * COLONNES;
 
-    int coups_max = 15 + (total_cases / 50) + (niveau * 1);
-    if (coups_max > 60) coups_max = 60; 
+    int coups_max = 20 + (total_cases / 40) + (niveau * 2);
+    if (coups_max > 80) coups_max = 80; 
     int coups = coups_max;
 
     int temps_total = 60 + (total_cases / 10);
@@ -404,7 +383,7 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
         }
 
         if (verif_victoire(objectifs, progression)) {
-            clrscr();
+            clrscr(); 
             if(tempsRestant < 0) tempsRestant = 0;
             afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression, tempsRestant);
             afficherPlateau(grille, cX, cY, selActive, sX, sY);
@@ -418,7 +397,11 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
         }
 
         if (besoinRafraichissement) {
+            // FIX POUR L'AFFICHAGE QUI SCROLLE :
+            // Si clrscr() ne marche pas, essayez de décommenter la ligne suivante :
+            // system("cls"); 
             clrscr();
+            
             if(tempsRestant < 0) tempsRestant = 0;
             afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression, tempsRestant);
             afficherPlateau(grille, cX, cY, selActive, sX, sY);
@@ -536,6 +519,7 @@ void afficherRegles() {
     getch();
 }
 
+
 int main() {
     srand(time(NULL));
     char pseudo[50];
@@ -551,7 +535,7 @@ int main() {
         text_color(YELLOW);
         printf("--- ECE HEROES : MENU PRINCIPAL ---\n");
         text_color(WHITE);
-        printf("1. Lire les regles\n2. Nouvelle Partie\n3. Charger\n4. Quitter\n\nChoix : ");
+        printf("1. Regles\n2. Nouvelle Partie\n3. Charger\n4. Quitter\n\nChoix : ");
         scanf("%d", &choix);
 
         switch (choix) {
