@@ -2,6 +2,8 @@
 //variables globales statiques, utilisables par tous les sous-programmes du fichier
 static int __BACKGROUND = BLACK; //couleur de fond par d�faut
 static int __FOREGROUND = WHITE; //couleur du texte par d�faut
+
+
 //effacer la console
 void clrscr() {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -18,6 +20,8 @@ void clrscr() {
 
     SetConsoleCursorPosition(hConsole, home);
 }
+
+
 //d�placer le curseur � la position horizontale x, verticale y
 void gotoxy(int x, int y)
 {
@@ -27,6 +31,9 @@ COORD c;
    c.Y=y;
    SetConsoleCursorPosition(h,c);
 }
+
+
+
 //effacer la suite de la ligne
 void delete_line()
 {
