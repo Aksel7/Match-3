@@ -2,34 +2,31 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <conio.h> // Windows
+// On inclut votre header personnalisé (qui inclut déjà windows.h et conio.h)
+#include "affichage_console.h"
 
 // --- CONSTANTES ---
 #define LIGNES 9
 #define COLONNES 9
-#define FICHIER_SAUVEGARDE "sauvegarde_v2.txt"
+#define FICHIER_SAUVEGARDE "sauvegarde.txt"
 #define VIES_INIT 3
+#define TEMPS_LIMITE 60 // Temps en secondes par niveau
 
-// Couleurs ANSI
-#define RESET   "\x1b[0m"
-#define ROUGE   "\x1b[31m"
-#define VERT    "\x1b[32m"
-#define BLEU    "\x1b[34m"
-#define JAUNE   "\x1b[33m"
-#define MAGENTA "\x1b[35m"
-#define BLANC   "\x1b[37m"
-
-// Tableaux de correspondance pour l'affichage (Index 0 vide, 1=Vert, etc.)
+// Noms pour l'affichage textuel des objectifs
 const char* NOM_COULEURS[] = {"", "VERT", "ROUGE", "BLEU", "JAUNE", "MAGENTA"};
-const char* CODE_COULEURS[] = {"", VERT, ROUGE, BLEU, JAUNE, MAGENTA};
+
+// MAPPING DES COULEURS (Basé sur votre enum COLORS du header)
+// Index 0 (Vide) -> BLACK
+// Index 1 (Vert) -> LIGHTGREEN
+// Index 2 (Rouge) -> LIGHTRED
+// Index 3 (Bleu) -> LIGHTBLUE
+// Index 4 (Jaune) -> YELLOW
+// Index 5 (Magenta) -> LIGHTMAGENTA
+const int CODE_COULEURS[] = { BLACK, LIGHTGREEN, LIGHTRED, LIGHTBLUE, YELLOW, LIGHTMAGENTA };
 
 // ==========================================
 // PARTIE 1 : LOGIQUE DU PLATEAU (Moteur)
 // ==========================================
-
-void effacerEcran(void) {
-    system("cls");
-}
 
 void creation_grille(int grille[LIGNES][COLONNES]) {
     for (int i = 0; i < LIGNES; i++) {
@@ -63,16 +60,13 @@ void gravite(int grille[LIGNES][COLONNES]) {
     }
 }
 
-// MODIFICATION : On passe le tableau 'progression' pour compter les couleurs détruites
 int verif_combi_horizontale(int grille[LIGNES][COLONNES], int progression[6]) {
     int combo = 0;
     for (int i = 0; i < LIGNES; i++){
         for (int j = 1; j < COLONNES - 1; j++){
-            // Si une ligne de 3 est détectée
             if (grille[i][j] != 0 && grille[i][j] == grille[i][j-1] && grille[i][j] == grille[i][j+1] ) {
                 int couleur = grille[i][j];
                 
-                // On compte et on supprime (si pas déjà supprimé par une croix)
                 if(grille[i][j-1] != 0) { progression[couleur]++; grille[i][j-1] = 0; }
                 if(grille[i][j] != 0)   { progression[couleur]++; grille[i][j] = 0; }
                 if(grille[i][j+1] != 0) { progression[couleur]++; grille[i][j+1] = 0; }
@@ -88,7 +82,6 @@ int verif_combi_verticale(int grille[LIGNES][COLONNES], int progression[6]) {
     int combo = 0;
     for (int i = 1; i < LIGNES-1; i++){
         for (int j = 0; j < COLONNES; j++){
-            // Si une colonne de 3 est détectée
             if ( grille[i][j] != 0 && grille[i][j] == grille[i+1][j] && grille[i][j] == grille[i-1][j] ) {
                 int couleur = grille[i][j];
 
@@ -103,9 +96,8 @@ int verif_combi_verticale(int grille[LIGNES][COLONNES], int progression[6]) {
     return combo;
 }
 
-// Retourne 1 si quelque chose a changé (combo), 0 sinon
 int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
-    int changed = 0;
+    int combi_trouvée = 0;
     int c_h, c_v;
     do {
         c_h = verif_combi_horizontale(grille, progression);
@@ -114,82 +106,89 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
         if (c_h || c_v) {
             gravite(grille);
             modif_grille(grille);
-            changed = 1;
+            combi_trouvée = 1;
         }
     } while (c_h || c_v);
     
-    return changed;
+    return combi_trouvée;
 }
 
 // ==========================================
 // PARTIE 2 : OBJECTIFS & LOGIQUE DE NIVEAU
 // ==========================================
 
-// Génère des objectifs aléatoires basés sur la difficulté du niveau
 void genererObjectifs(int niveau, int objectifs[6]) {
-    // Reset
     for(int k=0; k<6; k++) objectifs[k] = 0;
 
-    // Niveau 1 : Une seule couleur
     if (niveau == 1) {
         objectifs[2] = 10; // 10 Rouges
     }
-    // Niveau 2 : Deux couleurs
     else if (niveau == 2) {
         objectifs[1] = 8; // 8 Verts
         objectifs[3] = 8; // 8 Bleus
     }
-    // Niveaux supérieurs : Aléatoire mais croissant
     else {
-        int quantiteTotale = 15 + (niveau * 3); // Plus le niveau monte, plus il faut détruire
-        // On répartit sur 2 ou 3 couleurs au hasard
+        int quantiteTotale = 15 + (niveau * 3);
         int c1 = (rand() % 5) + 1;
         int c2 = (rand() % 5) + 1;
-        while(c2 == c1) c2 = (rand() % 5) + 1; // Assurer 2 couleurs différentes
+        while(c2 == c1) c2 = (rand() % 5) + 1;
 
         objectifs[c1] = quantiteTotale / 2;
         objectifs[c2] = quantiteTotale / 2;
     }
 }
 
-// Vérifie si TOUS les objectifs sont atteints
 int verif_victoire(int objectifs[6], int progression[6]) {
     for (int i = 1; i <= 5; i++) {
         if (progression[i] < objectifs[i]) {
-            return 0; // Pas encore fini
+            return 0; 
         }
     }
-    return 1; // Victoire !
+    return 1; 
 }
 
 // ==========================================
-// PARTIE 3 : AFFICHAGE & INTERFACE
+// PARTIE 3 : AFFICHAGE & INTERFACE (Refaite avec affichage_console)
 // ==========================================
 
-void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int objectifs[6], int progression[6]) {
-    printf("===================================================\n");
-    printf(" JOUEUR: %s | NIVEAU: %d | VIES: %d | COUPS: %d\n", pseudo, niveau, vies, coups);
-    printf("===================================================\n");
+void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int objectifs[6], int progression[6], int tempsRestant) {
+    text_color(WHITE);
+    printf("=========================================================\n");
+    
+    printf(" JOUEUR: %s | NIV: %d | VIES: %d | COUPS: %d | TEMPS: ", pseudo, niveau, vies, coups);
+    
+    // Changement de couleur dynamique pour le temps
+    if (tempsRestant <= 10) text_color(LIGHTRED);
+    else text_color(LIGHTGREEN);
+    
+    printf("%ds", tempsRestant);
+    text_color(WHITE); // Reset
+    
+    printf("\n=========================================================\n");
     printf(" OBJECTIFS :\n");
     
-    // Affichage dynamique des objectifs
     int a_un_objectif = 0;
     for (int i = 1; i <= 5; i++) {
         if (objectifs[i] > 0) {
-            // Affiche [COULEUR : Actuel / Total]
-            // Si l'objectif est fini, on met un petit "OK"
-            char status[10] = "";
-            if (progression[i] >= objectifs[i]) strcpy(status, " (OK!)");
-
-            printf("  %s%s : %d / %d%s%s\n", 
-                CODE_COULEURS[i], NOM_COULEURS[i], 
-                progression[i], objectifs[i], status, RESET);
+            // Affichage coloré du nom de l'objectif
+            text_color(CODE_COULEURS[i]);
+            printf("  %s", NOM_COULEURS[i]);
+            
+            text_color(WHITE);
+            printf(" : %d / %d", progression[i], objectifs[i]);
+            
+            if (progression[i] >= objectifs[i]) {
+                text_color(LIGHTGREEN);
+                printf(" (OK!)");
+            }
+            printf("\n");
             a_un_objectif = 1;
         }
     }
+    text_color(WHITE);
     if(!a_un_objectif) printf("  Aucun objectif ? (Bug)\n");
 
-    printf("---------------------------------------------------\n");
+    printf("---------------------------------------------------------\n");
     printf(" [Z/Q/S/D] Deplacement | [ESPACE] Selection | [P] Abandonner\n");
 }
 
@@ -198,20 +197,43 @@ void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive
     for (int i = 0; i < LIGNES; i++) {
         printf("    "); 
         for (int j = 0; j < COLONNES; j++) {
-            // Sélection de la couleur ANSI
-            char* couleur = (char*)CODE_COULEURS[grille[i][j]];
+            
+            int couleur = CODE_COULEURS[grille[i][j]];
+            int estCurseur = (i == cX && j == cY);
+            int estSelectionne = (selActive && i == selX && j == selY);
 
-            if (i == cX && j == cY) {
-                if (selActive && i == selX && j == selY) printf("<%s%d%s> ", couleur, grille[i][j], RESET);
-                else printf("[%s%d%s] ", couleur, grille[i][j], RESET);
-            } else if (selActive && i == selX && j == selY) {
-                printf(" %s%d%s* ", couleur, grille[i][j], RESET);
+            // Gestion de l'affichage curseur/sélection
+            if (estCurseur) {
+                text_color(WHITE);
+                if (selActive && estSelectionne) printf("<");
+                else printf("[");
+                
+                text_color(couleur);
+                printf("%d", grille[i][j]);
+                
+                text_color(WHITE);
+                if (selActive && estSelectionne) printf("> ");
+                else printf("] ");
+
+            } else if (estSelectionne) {
+                text_color(WHITE);
+                printf(" *");
+                text_color(couleur);
+                printf("%d", grille[i][j]);
+                text_color(WHITE);
+                printf("* ");
             } else {
-                printf(" %s%d%s  ", couleur, grille[i][j], RESET);
+                text_color(DARKGRAY); // Crochets gris pour le fond
+                printf(" ");
+                text_color(couleur); // Chiffre en couleur
+                printf("%d", grille[i][j]);
+                text_color(DARKGRAY);
+                printf("  ");
             }
         }
         printf("\n\n");
     }
+    text_color(WHITE); // Toujours remettre en blanc à la fin
 }
 
 // ==========================================
@@ -220,81 +242,119 @@ void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive
 
 int lancerNiveau(char pseudo[], int niveau, int *vies) {
     int grille[LIGNES][COLONNES];
-    int coups = 20; // 20 coups pour réussir
+    int coups = 20; 
     
-    // Tableaux pour objectifs et progression (Index 1 à 5 utilisés)
     int objectifs[6] = {0};
     int progression[6] = {0};
     
-    // Génération du niveau
     creation_grille(grille);
-    
-    // On simule une résolution pour nettoyer, mais SANS compter dans la progression
     int poubelle[6] = {0}; 
     resoudre_plateau(grille, poubelle); 
 
-    // Définir les objectifs de ce niveau
     genererObjectifs(niveau, objectifs);
 
-    // Variables UI
     int cX = 0, cY = 0;
     int selActive = 0, sX = -1, sY = -1;
     int running = 1;
 
-    while (running && coups > 0) {
+    // Timer
+    time_t debut = time(NULL);
+    int tempsRestant = TEMPS_LIMITE;
+    int dernierTempsAffiche = TEMPS_LIMITE;
+    int besoinRafraichissement = 1;
+
+    // On cache le curseur pour un rendu plus "Jeu vidéo"
+    hide_cursor();
+
+    while (running && coups > 0 && tempsRestant > 0) {
+        
+        int ecoule = (int)difftime(time(NULL), debut);
+        tempsRestant = TEMPS_LIMITE - ecoule;
+
+        if (tempsRestant != dernierTempsAffiche) {
+            dernierTempsAffiche = tempsRestant;
+            besoinRafraichissement = 1;
+        }
+
         // 1. Vérif Victoire
         if (verif_victoire(objectifs, progression)) {
-            effacerEcran();
-            afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression);
+            clrscr(); // Utilisation de la nouvelle fonction
+            if(tempsRestant < 0) tempsRestant = 0;
+            afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression, tempsRestant);
             afficherPlateau(grille, cX, cY, selActive, sX, sY);
+            
+            text_color(LIGHTGREEN);
             printf("\n\n*** VICTOIRE ! Tous les objectifs atteints ! ***\n");
+            text_color(WHITE);
+            show_cursor();
             system("pause");
-            return 1; // Niveau gagné
+            return 1;
         }
 
         // 2. Affichage
-        effacerEcran();
-        afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression);
-        afficherPlateau(grille, cX, cY, selActive, sX, sY);
+        if (besoinRafraichissement) {
+            clrscr(); // Utilisation de la nouvelle fonction
+            if(tempsRestant < 0) tempsRestant = 0;
+            afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression, tempsRestant);
+            afficherPlateau(grille, cX, cY, selActive, sX, sY);
+            besoinRafraichissement = 0;
+        }
 
-        // 3. Input
-        char touche = _getch();
+        // 3. Gestion des Entrées
+        // kbhit() et getch() sont déclarés dans votre header (via conio.h ou réimplémentation)
+        if (kbhit()) { 
+            char touche = getch(); 
+            besoinRafraichissement = 1; 
 
-        switch (touche) {
-            case 'p': return 0; // Abandon
-            case 'z': if (cX > 0) cX--; break;
-            case 's': if (cX < LIGNES - 1) cX++; break;
-            case 'q': if (cY > 0) cY--; break;
-            case 'd': if (cY < COLONNES - 1) cY++; break;
-            case ' ': // Action
-                if (!selActive) {
-                    selActive = 1; sX = cX; sY = cY;
-                } else {
-                    int dist = abs(cX - sX) + abs(cY - sY);
-                    if (dist == 1) {
-                        // Echange
-                        int tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
-                        
-                        // Résolution avec mise à jour de la progression
-                        int combo = resoudre_plateau(grille, progression);
-                        
-                        if (combo) {
-                            coups--;
-                            selActive = 0;
+            switch (touche) {
+                case 'p': 
+                    show_cursor();
+                    return 0; // Abandon
+                case 'z': if (cX > 0) cX--; break;
+                case 's': if (cX < LIGNES - 1) cX++; break;
+                case 'q': if (cY > 0) cY--; break;
+                case 'd': if (cY < COLONNES - 1) cY++; break;
+                case ' ': 
+                    if (!selActive) {
+                        selActive = 1; sX = cX; sY = cY;
+                    } else {
+                        int dist = abs(cX - sX) + abs(cY - sY);
+                        if (dist == 1) {
+                            int tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
+                            
+                            int combo = resoudre_plateau(grille, progression);
+                            
+                            if (combo) {
+                                coups--;
+                                selActive = 0;
+                            } else {
+                                // Mouvement invalide (pas de combo), on annule
+                                tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
+                                selActive = 0;
+                            }
                         } else {
-                            // Annulation (Mouvement invalide)
-                            tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
+                            // Clic trop loin ou sur soi-même, on désélectionne
                             selActive = 0;
                         }
-                    } else {
-                        selActive = 0;
                     }
-                }
-                break;
+                    break;
+            }
+        } else {
+            Sleep(50); // Pause 50ms pour ne pas surcharger le processeur
         }
     }
 
-    printf("\n\nDEFAITE... Plus de coups disponibles.\n");
+    show_cursor(); // IMPORTANT : Toujours réafficher le curseur en sortant
+    printf("\n\n");
+    
+    text_color(LIGHTRED);
+    if (tempsRestant <= 0) {
+        printf("DEFAITE... Temps ecoule !\n");
+    } else {
+        printf("DEFAITE... Plus de coups disponibles.\n");
+    }
+    text_color(WHITE);
+    
     system("pause");
     return 0; // Perdu
 }
@@ -330,45 +390,103 @@ int chargerSauvegarde(char pseudo[], int *niveau, int *vies) {
     return trouve;
 }
 
+void afficherRegles() {
+    clrscr();
+    text_color(LIGHTCYAN);
+    printf("=========================================================\n");
+    printf("                  REGLES DU JEU : ECE HEROES             \n");
+    printf("=========================================================\n\n");
+    text_color(WHITE);
+    printf("1. PRINCIPE :\n");
+    printf("   Associez au moins 3 items identiques pour les faire\n");
+    printf("   disparaitre et remplir votre contrat.\n\n");
+    printf("2. COMMANDES :\n");
+    printf("   - Z/Q/S/D : Deplacer le curseur.\n");
+    printf("   - ESPACE  : Selectionner/Permuter un item.\n");
+    printf("   - P       : Abandonner le niveau en cours.\n\n");
+    printf("3. OBJECTIFS :\n");
+    printf("   Chaque niveau a un contrat (nombre d'items a eliminer)\n");
+    printf("   a remplir en un temps et un nombre de coups limites.\n\n");
+    printf("4. VIES :\n");
+    printf("   Vous commencez avec %d vies. Echouer a un niveau vous\n", VIES_INIT);
+    printf("   fait perdre une vie.\n\n");
+    printf("=========================================================\n");
+    printf("Appuyez sur une touche pour revenir au menu...");
+    getch();
+}
+
 int main() {
     srand(time(NULL));
     char pseudo[50];
     int niveau = 1;
     int vies = VIES_INIT;
     int choix;
+    int continuerMenu = 1;
 
-    effacerEcran();
-    printf("--- ECE HEROES : COLOR EDITION ---\n");
-    printf("Entrez votre pseudo : ");
-    scanf("%s", pseudo);
+    // Titre de la fenêtre
+    SetConsoleTitle("ECE HEROES - Match 3");
 
-    printf("\n1. Nouvelle partie\n2. Charger\nChoix : ");
-    scanf("%d", &choix);
+    while (continuerMenu) {
+        clrscr();
+        text_color(YELLOW);
+        printf("--- ECE HEROES : MENU PRINCIPAL ---\n");
+        text_color(WHITE);
+        printf("1. Lire les regles du jeu\n");
+        printf("2. Commencer une nouvelle partie\n");
+        printf("3. Reprendre une partie (Charger)\n");
+        printf("4. Quitter\n");
+        printf("\nChoix : ");
+        scanf("%d", &choix);
 
-    if (choix == 2) {
-        if (chargerSauvegarde(pseudo, &niveau, &vies)) {
-            printf("Retour au niveau %d\n", niveau);
-            system("pause");
-        } else {
-            printf("Pas de sauvegarde. Nouveau depart.\n");
-            system("pause");
+        switch (choix) {
+            case 1:
+                afficherRegles();
+                break;
+            case 2:
+                printf("Entrez votre pseudo : ");
+                scanf("%s", pseudo);
+                vies = VIES_INIT;
+                niveau = 1;
+                continuerMenu = 0; 
+                break;
+            case 3:
+                printf("Entrez votre pseudo : ");
+                scanf("%s", pseudo);
+                if (chargerSauvegarde(pseudo, &niveau, &vies)) {
+                    printf("Sauvegarde trouvee ! Niveau %d, %d vies.\n", niveau, vies);
+                    system("pause");
+                    continuerMenu = 0;
+                } else {
+                    printf("Aucune sauvegarde pour ce pseudo. Reessayez.\n");
+                    system("pause");
+                }
+                break;
+            case 4:
+                printf("Merci d'avoir joue !\n");
+                return 0;
+            default:
+                printf("Choix invalide.\n");
+                system("pause");
         }
     }
 
+    // --- Boucle de Jeu ---
     while (vies > 0) {
         if (lancerNiveau(pseudo, niveau, &vies)) {
-            // Gagné
+            clrscr();
             printf("Sauvegarder ? (1=Oui/0=Non) : ");
             int sv;
             scanf("%d", &sv);
             if (sv == 1) sauvegarderPartie(pseudo, niveau + 1, vies);
-            
             niveau++;
         } else {
-            // Perdu
             vies--;
             if (vies > 0) {
-                printf("Il vous reste %d vies. Recommencer ? (1=Oui/0=Non) : ", vies);
+                clrscr();
+                text_color(LIGHTRED);
+                printf("Il vous reste %d vies.\n", vies);
+                text_color(WHITE);
+                printf("Recommencer ? (1=Oui/0=Non) : ");
                 int retry;
                 scanf("%d", &retry);
                 if (!retry) break;
