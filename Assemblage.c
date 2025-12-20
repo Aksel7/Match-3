@@ -13,6 +13,8 @@
 #define TEMPS_LIMITE 60 // Temps en secondes par niveau
 #define prct_diff 0.1 // Pourcentage lié au contrat généré 
 
+
+
 // Noms pour l'affichage textuel des objectifs
 const char* NOM_COULEURS[] = {"", "VERT", "ROUGE", "BLEU", "JAUNE", "MAGENTA"};
 
@@ -241,37 +243,60 @@ void genererObjectifs(int niveau, int objectifs[6]) {
     // 2. Calcul du volume total de la grille
     int total_cases = LIGNES * COLONNES;
 
-    // 3. Définition de la difficulté (Pourcentage de la grille à vider)
-    // Exemple : Au niveau 1, on doit vider environ 5% de la grille d'une couleur spécifique
-    int quantite_base = total_cases * prct_diff; 
+    // --- LOGIQUE D'ÉQUILIBRAGE ---
     
-    // Sécurité pour les très petites grilles (minimum 3 items)
-    if (quantite_base < 3) quantite_base = 3;
+    // RAPPEL STATISTIQUE :
+    // Sur une grille aléatoire à 5 couleurs, chaque couleur occupe naturellement ~20% de l'espace.
+    // Pour qu'un objectif soit un "défi", il faut demander AU MOINS 30% ou 40% du volume total.
 
     if (niveau == 1) {
-        // Niveau 1 : Un seul objectif simple (ex: ~5% du tableau en rouge)
-        objectifs[2] = quantite_base + 2; 
+        // NIVEAU 1 : INTRO (Facile mais pas trivial)
+        // On demande 2 couleurs pour éviter d'être bloqué si une couleur manque.
+        // Objectif : Vider l'équivalent de 30% de la grille au total.
+        int total_a_vider = total_cases * 0.30;
+        
+        objectifs[2] = total_a_vider / 2; // Rubis
+        objectifs[4] = total_a_vider / 2; // Jaune (Topaze)
     }
     else if (niveau == 2) {
-        // Niveau 2 : Deux couleurs (ex: ~4% du tableau chacune)
-        int qte = (total_cases * prct_diff/1.5);
-        if (qte < 3) qte = 3;
+        // NIVEAU 2 : MONTÉE EN PUISSANCE
+        // Objectif : Vider 45% de la grille.
+        int total_a_vider = total_cases * 0.45;
         
-        objectifs[1] = qte; 
-        objectifs[3] = qte; 
+        objectifs[1] = total_a_vider / 2; // Emeraude
+        objectifs[3] = total_a_vider / 2; // Saphir
     }
-    else {
-        // Niveau 3+ : Génération aléatoire et progressive
-        // La difficulté augmente avec le niveau : +1% du tableau par niveau supplémentaire
-        float ratio = 0.08 + (prct_diff * (niveau - 3)); // Commence à 8% et augmente
-        int quantiteTotale = total_cases * ratio;
-        
+    else if (niveau < 5) {
+        // NIVEAU 3 et 4 : CHALLENGE STANDARD
+        // Formule : 50% de la grille + 10% par niveau supplémentaire
+        float ratio = 0.50 + (0.10 * (niveau - 3));
+        int total_a_vider = total_cases * ratio;
+
+        // Choix aléatoire de 2 couleurs différentes
         int c1 = (rand() % 5) + 1;
         int c2 = (rand() % 5) + 1;
-        while(c2 == c1) c2 = (rand() % 5) + 1; 
+        while(c2 == c1) c2 = (rand() % 5) + 1;
 
-        objectifs[c1] = quantiteTotale / 2;
-        objectifs[c2] = quantiteTotale / 2;
+        objectifs[c1] = total_a_vider / 2;
+        objectifs[c2] = total_a_vider / 2;
+    }
+    else {
+        // NIVEAU 5+ : DIFFICILE (3 COULEURS)
+        // À ce stade, on demande de vider presque l'équivalent de toute la grille (100%+)
+        // Le joueur doit jouer vite et faire des combos.
+        float ratio = 0.80 + (0.15 * (niveau - 5)); 
+        int total_a_vider = total_cases * ratio;
+
+        // Choix aléatoire de 3 couleurs différentes
+        int c1 = (rand() % 5) + 1;
+        int c2 = (rand() % 5) + 1;
+        while(c2 == c1) c2 = (rand() % 5) + 1;
+        int c3 = (rand() % 5) + 1;
+        while(c3 == c1 || c3 == c2) c3 = (rand() % 5) + 1;
+
+        objectifs[c1] = total_a_vider / 3;
+        objectifs[c2] = total_a_vider / 3;
+        objectifs[c3] = total_a_vider / 3;
     }
 }
 
@@ -379,10 +404,23 @@ void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive
 
 int lancerNiveau(char pseudo[], int niveau, int *vies) {
     int grille[LIGNES][COLONNES];
-    int coups = 20; 
     
+    // --- ADAPTATION DYNAMIQUE ---
+    // Sur une grille 9x9 (81 cases) -> ~20 coups
+    // Sur une grille 25x45 (1125 cases) -> ~35 coups (les combos sont plus gros, donc pas besoin de 100 coups)
+    
+    int total_cases = LIGNES * COLONNES;
+    
+    // Formule simple : Base de 15 coups + 1 coup par tranche de 50 cases, + bonus par niveau
+    int coups = 15 + (total_cases / 50) + (niveau * 2);
+    
+    // Plafond pour éviter d'avoir trop de coups sur la grille géante
+    if (coups > 40) coups = 40; // Le PDF suggère environ 30 coups 
+
     int objectifs[6] = {0};
     int progression[6] = {0};
+    
+    // ... suite du code ...
     
     creation_grille(grille);
     int poubelle[6] = {0}; 
