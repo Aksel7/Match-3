@@ -11,6 +11,7 @@
 #define FICHIER_SAUVEGARDE "sauvegarde.txt"
 #define VIES_INIT 3
 #define TEMPS_LIMITE 60 // Temps en secondes par niveau
+#define prct_diff 0.1 // Pourcentage lié au contrat généré 
 
 // Noms pour l'affichage textuel des objectifs
 const char* NOM_COULEURS[] = {"", "VERT", "ROUGE", "BLEU", "JAUNE", "MAGENTA"};
@@ -60,7 +61,7 @@ void gravite(int grille[LIGNES][COLONNES]) {
     }
 }
 
-int verif_combi_horizontale(int grille[LIGNES][COLONNES], int progression[6]) {
+/* int verif_combi_horizontale(int grille[LIGNES][COLONNES], int progression[6]) {
     int combo = 0;
     for (int i = 0; i < LIGNES; i++){
         for (int j = 1; j < COLONNES - 1; j++){
@@ -94,23 +95,139 @@ int verif_combi_verticale(int grille[LIGNES][COLONNES], int progression[6]) {
         }       
     }
     return combo;
+} */
+// --- EFFETS SPÉCIAUX (Selon le Cahier des Charges) ---
+
+// Effet Ligne de 6 : Supprime TOUS les items de cette couleur 
+void effet_supprimer_couleur(int grille[LIGNES][COLONNES], int progression[6], int couleur) {
+    for (int i = 0; i < LIGNES; i++) {
+        for (int j = 0; j < COLONNES; j++) {
+            if (grille[i][j] == couleur) {
+                grille[i][j] = 0;
+                progression[couleur]++;
+            }
+        }
+    }
 }
 
-int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
-    int combi_trouvée = 0;
-    int c_h, c_v;
-    do {
-        c_h = verif_combi_horizontale(grille, progression);
-        c_v = verif_combi_verticale(grille, progression);
-
-        if (c_h || c_v) {
-            gravite(grille);
-            modif_grille(grille);
-            combi_trouvée = 1;
+// Effet Croix de 9 : Supprime toute la ligne ET la colonne du centre 
+void effet_croix_explosion(int grille[LIGNES][COLONNES], int progression[6], int cX, int cY) {
+    // Vider la ligne
+    for (int j = 0; j < COLONNES; j++) {
+        if (grille[cX][j] != 0) {
+            int coul = grille[cX][j];
+            grille[cX][j] = 0;
+            progression[coul]++;
         }
-    } while (c_h || c_v);
+    }
+    // Vider la colonne
+    for (int i = 0; i < LIGNES; i++) {
+        if (grille[i][cY] != 0) {
+            int coul = grille[i][cY];
+            grille[i][cY] = 0;
+            progression[coul]++;
+        }
+    }
+}
+
+
+int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
+    int modif = 0;
+    int items_a_detruire[LIGNES][COLONNES] = {0}; // 0=Non, 1=Oui
     
-    return combi_trouvée;
+    // --- ETAPE 1 : ANALYSE DES FIGURES ---
+    
+    // On parcourt chaque case pour voir si elle est le début d'une figure
+    for (int i = 0; i < LIGNES; i++) {
+        for (int j = 0; j < COLONNES; j++) {
+            int couleur = grille[i][j];
+            if (couleur == 0) continue;
+
+            // 1. Compter longueur Horizontale
+            int lenH = 0;
+            int k = j;
+            while (k < COLONNES && grille[i][k] == couleur) { lenH++; k++; }
+
+            // 2. Compter longueur Verticale
+            int lenV = 0;
+            int l = i;
+            while (l < LIGNES && grille[l][j] == couleur) { lenV++; l++; }
+
+            // --- DETECTION DES COMBOS SPÉCIAUX ---
+
+            // CAS A : Ligne de 6 ou plus (Horizontalement) 
+            if (lenH >= 6) {
+                effet_supprimer_couleur(grille, progression, couleur);
+                return 1; // On relance direct la gravité car le plateau a beaucoup changé
+            }
+            // CAS B : Ligne de 6 ou plus (Verticalement)
+            if (lenV >= 6) {
+                effet_supprimer_couleur(grille, progression, couleur);
+                return 1;
+            }
+
+            // CAS C : Croix de 9 items (Intersection de Ligne et Colonne) 
+            // On vérifie si on est à une intersection. 
+            // Note: C'est complexe à détecter parfaitement, ici on simplifie :
+            // Si à cette case (i,j) on a une longue ligne horizontale ET verticale qui se croisent
+            // Ex: Une ligne de 5 et une colonne de 5 qui se croisent font 9 items (5+5-1 centre)
+            if (lenH >= 5 && lenV >= 5) {
+                // On considère que le centre de la croix est ici ou proche
+                effet_croix_explosion(grille, progression, i, j);
+                return 1;
+            }
+
+            // --- DETECTION STANDARD (Match 3, 4, 5) ---
+            
+            // Marquage Horizontal
+            if (lenH >= 3) {
+                for (int k = 0; k < lenH; k++) items_a_detruire[i][j + k] = 1;
+                modif = 1;
+            }
+            
+            // Marquage Vertical
+            if (lenV >= 3) {
+                for (int k = 0; k < lenV; k++) items_a_detruire[i + k][j] = 1;
+                modif = 1;
+            }
+            
+            // CAS D : Carré (Bonus PDF: Carré de 4 items) 
+            // Note: Le PDF dit "4*4", mais c'est surement une erreur pour "Carré de 4" (2x2)
+            // car 4x4 est impossible. On code le 2x2.
+            if (i < LIGNES-1 && j < COLONNES-1) {
+                if (grille[i][j] == couleur && grille[i+1][j] == couleur &&
+                    grille[i][j+1] == couleur && grille[i+1][j+1] == couleur) {
+                        items_a_detruire[i][j] = 1;
+                        items_a_detruire[i+1][j] = 1;
+                        items_a_detruire[i][j+1] = 1;
+                        items_a_detruire[i+1][j+1] = 1;
+                        modif = 1;
+                }
+            }
+        }
+    }
+
+    // --- ETAPE 2 : SUPPRESSION ---
+    if (modif) {
+        for (int i = 0; i < LIGNES; i++) {
+            for (int j = 0; j < COLONNES; j++) {
+                if (items_a_detruire[i][j]) {
+                    int c = grille[i][j];
+                    if (c != 0) progression[c]++; // On compte pour l'objectif
+                    grille[i][j] = 0; // On détruit
+                }
+            }
+        }
+        
+        // --- ETAPE 3 : GRAVITÉ ET REMPLISSAGE ---
+        gravite(grille);
+        modif_grille(grille);
+        
+        // Récursivité : On revérifie si ça a créé de nouveaux combos !
+        resoudre_plateau(grille, progression); 
+    }
+
+    return modif;
 }
 
 // ==========================================
@@ -118,20 +235,40 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
 // ==========================================
 
 void genererObjectifs(int niveau, int objectifs[6]) {
+    // 1. Réinitialiser le tableau
     for(int k=0; k<6; k++) objectifs[k] = 0;
 
+    // 2. Calcul du volume total de la grille
+    int total_cases = LIGNES * COLONNES;
+
+    // 3. Définition de la difficulté (Pourcentage de la grille à vider)
+    // Exemple : Au niveau 1, on doit vider environ 5% de la grille d'une couleur spécifique
+    int quantite_base = total_cases * prct_diff; 
+    
+    // Sécurité pour les très petites grilles (minimum 3 items)
+    if (quantite_base < 3) quantite_base = 3;
+
     if (niveau == 1) {
-        objectifs[2] = 10; // 10 Rouges
+        // Niveau 1 : Un seul objectif simple (ex: ~5% du tableau en rouge)
+        objectifs[2] = quantite_base + 2; 
     }
     else if (niveau == 2) {
-        objectifs[1] = 8; // 8 Verts
-        objectifs[3] = 8; // 8 Bleus
+        // Niveau 2 : Deux couleurs (ex: ~4% du tableau chacune)
+        int qte = (total_cases * prct_diff/1.5);
+        if (qte < 3) qte = 3;
+        
+        objectifs[1] = qte; 
+        objectifs[3] = qte; 
     }
     else {
-        int quantiteTotale = 15 + (niveau * 3);
+        // Niveau 3+ : Génération aléatoire et progressive
+        // La difficulté augmente avec le niveau : +1% du tableau par niveau supplémentaire
+        float ratio = 0.08 + (prct_diff * (niveau - 3)); // Commence à 8% et augmente
+        int quantiteTotale = total_cases * ratio;
+        
         int c1 = (rand() % 5) + 1;
         int c2 = (rand() % 5) + 1;
-        while(c2 == c1) c2 = (rand() % 5) + 1;
+        while(c2 == c1) c2 = (rand() % 5) + 1; 
 
         objectifs[c1] = quantiteTotale / 2;
         objectifs[c2] = quantiteTotale / 2;
