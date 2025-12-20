@@ -6,17 +6,17 @@
 #include "affichage_console.h"
 
 // --- CONSTANTES ---
-#define LIGNES 9
-#define COLONNES 9
+#define LIGNES 20
+#define COLONNES 20
 #define FICHIER_SAUVEGARDE "sauvegarde.txt"
 #define VIES_INIT 3
-#define TEMPS_LIMITE 60 // Temps en secondes par niveau
+// #define TEMPS_LIMITE 60 // Temps en secondes par niveau
 #define prct_diff 0.1 // Pourcentage lié au contrat généré 
 
 
 
 // Noms pour l'affichage textuel des objectifs
-const char* NOM_COULEURS[] = {"", "VERT", "ROUGE", "BLEU", "JAUNE", "MAGENTA"};
+const char* NOM_COULEURS[] = {"", "EMERAUDE", "RUBIS", "SAPHIR", "TOPAZE", "DIAMENT"};
 
 // MAPPING DES COULEURS (Basé sur votre enum COLORS du header)
 // Index 0 (Vide) -> BLACK
@@ -300,6 +300,8 @@ void genererObjectifs(int niveau, int objectifs[6]) {
     }
 }
 
+
+
 int verif_victoire(int objectifs[6], int progression[6]) {
     for (int i = 1; i <= 5; i++) {
         if (progression[i] < objectifs[i]) {
@@ -399,67 +401,77 @@ void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive
 }
 
 // ==========================================
-// PARTIE 4 : BOUCLE DE NIVEAU
+// PARTIE 4 : JEU (Modifiée avec Temps/Coups Dynamiques)
 // ==========================================
 
 int lancerNiveau(char pseudo[], int niveau, int *vies) {
     int grille[LIGNES][COLONNES];
-    
-    // --- ADAPTATION DYNAMIQUE ---
-    // Sur une grille 9x9 (81 cases) -> ~20 coups
-    // Sur une grille 25x45 (1125 cases) -> ~35 coups (les combos sont plus gros, donc pas besoin de 100 coups)
-    
     int total_cases = LIGNES * COLONNES;
-    
-    // Formule simple : Base de 15 coups + 1 coup par tranche de 50 cases, + bonus par niveau
-    int coups = 15 + (total_cases / 50) + (niveau * 2);
-    
-    // Plafond pour éviter d'avoir trop de coups sur la grille géante
-    if (coups > 40) coups = 40; // Le PDF suggère environ 30 coups 
 
+    // --- CALCUL DYNAMIQUE DES COUPS ET DU TEMPS ---
+    
+    // 1. Calcul des COUPS
+    // Base : 15 coups
+    // + Bonus taille : 1 coup tous les 50 cases (ex: +22 coups pour la grille 25x45)
+    // + Bonus niveau : +1 coup par niveau
+    int coups_max = 15 + (total_cases / 50) + (niveau * 1);
+    
+    // Plafond imposé par le réalisme (le PDF parle de ~30 coups pour les gros niveaux)
+    if (coups_max > 50) coups_max = 50; 
+    
+    int coups = coups_max; // Compteur courant
+
+    // 2. Calcul du TEMPS (en secondes)
+    // Base : 60 secondes
+    // + Bonus taille : 1 seconde toutes les 10 cases (ex: +110s pour la grille 25x45)
+    // Le temps doit être généreux car la grille 25x45 est immense à scanner des yeux
+    int temps_total = 60 + (total_cases / 10);
+    
+    // Cap pour éviter des parties de 10 minutes
+    if (temps_total > 300) temps_total = 300; // Max 5 minutes
+
+    // --- INITIALISATION ---
     int objectifs[6] = {0};
     int progression[6] = {0};
     
-    // ... suite du code ...
-    
     creation_grille(grille);
     int poubelle[6] = {0}; 
-    resoudre_plateau(grille, poubelle); 
+    resoudre_plateau(grille, poubelle); // On nettoie les combos initiaux
 
-    genererObjectifs(niveau, objectifs);
+    genererObjectifs(niveau, objectifs); // Ta fonction d'objectifs améliorée
 
-    int cX = 0, cY = 0;
+    int cX = LIGNES/2, cY = COLONNES/2; // On place le curseur au milieu au début
     int selActive = 0, sX = -1, sY = -1;
     int running = 1;
 
-    // Timer
     time_t debut = time(NULL);
-    int tempsRestant = TEMPS_LIMITE;
-    int dernierTempsAffiche = TEMPS_LIMITE;
+    int tempsRestant = temps_total;
+    int dernierTempsAffiche = temps_total;
     int besoinRafraichissement = 1;
 
-    // On cache le curseur pour un rendu plus "Jeu vidéo"
     hide_cursor();
 
+    // --- BOUCLE DE JEU ---
     while (running && coups > 0 && tempsRestant > 0) {
         
+        // Gestion du Chronomètre
         int ecoule = (int)difftime(time(NULL), debut);
-        tempsRestant = TEMPS_LIMITE - ecoule;
+        tempsRestant = temps_total - ecoule;
 
         if (tempsRestant != dernierTempsAffiche) {
             dernierTempsAffiche = tempsRestant;
             besoinRafraichissement = 1;
         }
 
-        // 1. Vérif Victoire
+        // 1. Vérification Victoire
         if (verif_victoire(objectifs, progression)) {
-            clrscr(); // Utilisation de la nouvelle fonction
+            clrscr();
             if(tempsRestant < 0) tempsRestant = 0;
             afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression, tempsRestant);
             afficherPlateau(grille, cX, cY, selActive, sX, sY);
             
             text_color(LIGHTGREEN);
-            printf("\n\n*** VICTOIRE ! Tous les objectifs atteints ! ***\n");
+            printf("\n\n*** VICTOIRE ! Niveau termine ! ***\n");
             text_color(WHITE);
             show_cursor();
             system("pause");
@@ -468,70 +480,71 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
 
         // 2. Affichage
         if (besoinRafraichissement) {
-            clrscr(); // Utilisation de la nouvelle fonction
+            clrscr();
             if(tempsRestant < 0) tempsRestant = 0;
             afficherInfosHUD(pseudo, niveau, coups, *vies, objectifs, progression, tempsRestant);
             afficherPlateau(grille, cX, cY, selActive, sX, sY);
             besoinRafraichissement = 0;
         }
 
-        // 3. Gestion des Entrées
-        // kbhit() et getch() sont déclarés dans votre header (via conio.h ou réimplémentation)
+        // 3. Entrées Joueur
         if (kbhit()) { 
             char touche = getch(); 
             besoinRafraichissement = 1; 
 
             switch (touche) {
-                case 'p': 
-                    show_cursor();
-                    return 0; // Abandon
+                case 'p': show_cursor(); return 0; // Abandon
                 case 'z': if (cX > 0) cX--; break;
                 case 's': if (cX < LIGNES - 1) cX++; break;
                 case 'q': if (cY > 0) cY--; break;
                 case 'd': if (cY < COLONNES - 1) cY++; break;
+                
+                // --- SELECTION ET PERMUTATION ---
                 case ' ': 
                     if (!selActive) {
+                        // Activer la sélection
                         selActive = 1; sX = cX; sY = cY;
                     } else {
+                        // Tenter le mouvement
                         int dist = abs(cX - sX) + abs(cY - sY);
                         if (dist == 1) {
+                            // 1. On permute
                             int tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
                             
+                            // 2. On vérifie si ça fait un combo
                             int combo = resoudre_plateau(grille, progression);
                             
                             if (combo) {
-                                coups--;
+                                coups--; // Coup valide décompté
                                 selActive = 0;
                             } else {
-                                // Mouvement invalide (pas de combo), on annule
+                                // 3. Pas de combo -> On annule le mouvement (coup invalide)
                                 tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
                                 selActive = 0;
+                                // Optionnel : Faire un petit beep ou flash rouge pour dire "Mouvement impossible"
                             }
                         } else {
-                            // Clic trop loin ou sur soi-même, on désélectionne
+                            // Clic trop loin ou sur soi-même -> Annulation sélection
                             selActive = 0;
                         }
                     }
                     break;
             }
         } else {
-            Sleep(50); // Pause 50ms pour ne pas surcharger le processeur
+            Sleep(50); // Anti-CPU burn
         }
     }
 
-    show_cursor(); // IMPORTANT : Toujours réafficher le curseur en sortant
+    // --- FIN DE BOUCLE (DÉFAITE) ---
+    show_cursor();
     printf("\n\n");
-    
     text_color(LIGHTRED);
-    if (tempsRestant <= 0) {
-        printf("DEFAITE... Temps ecoule !\n");
-    } else {
-        printf("DEFAITE... Plus de coups disponibles.\n");
-    }
-    text_color(WHITE);
+    if (tempsRestant <= 0) printf("DEFAITE... Temps ecoule !\n");
+    else printf("DEFAITE... Plus de coups disponibles.\n");
     
+    text_color(WHITE);
     system("pause");
-    return 0; // Perdu
+    return 0; 
 }
 
 // ==========================================
