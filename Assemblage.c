@@ -10,11 +10,10 @@
 #define FICHIER_SAUVEGARDE "sauvegarde.txt"
 #define VIES_INIT 3
 
-// --- NOMS ET COULEURS DES PIERRES PRECIEUSES ---
-// Index 0 (Vide), 1 (Vert), 2 (Rouge), 3 (Bleu), 4 (Jaune), 5 (Cyan/Diamant)
+// Noms pour l'affichage textuel des objectifs
 const char* NOM_PIERRES[] = {"", "EMERAUDE", "RUBIS", "SAPHIR", "TOPAZE", "DIAMANT"};
 
-// MAPPING DES COULEURS (Doit correspondre à l'ordre ci-dessus)
+// MAPPING DES COULEURS
 const int CODE_COULEURS[] = { BLACK, LIGHTGREEN, LIGHTRED, LIGHTBLUE, YELLOW, LIGHTCYAN };
 
 // ==========================================
@@ -55,9 +54,9 @@ void gravite(int grille[LIGNES][COLONNES]) {
 
 // --- EFFETS SPÉCIAUX ---
 
-// 1. EFFET BOMBE DE ZONE (Rayon 1 = 3x3 cases)
+// 1. EFFET BOMBE DE ZONE
 void effet_bombe(int grille[LIGNES][COLONNES], int progression[6], int cX, int cY) {
-    int rayon = 1; 
+    int rayon = 1; // Zone 3x3
     for (int i = cX - rayon; i <= cX + rayon; i++) {
         for (int j = cY - rayon; j <= cY + rayon; j++) {
             if (i >= 0 && i < LIGNES && j >= 0 && j < COLONNES) {
@@ -98,8 +97,8 @@ void effet_supprimer_couleur(int grille[LIGNES][COLONNES], int progression[6], i
     }
 }
 
-// MOTEUR DE RESOLUTION
-int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
+// MOTEUR DE RESOLUTION (AVEC CARRE 4x4)
+int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6], char *message) {
     int modif = 0;
     int items_a_detruire[LIGNES][COLONNES] = {0}; 
     int creation_special[LIGNES][COLONNES] = {0}; 
@@ -117,12 +116,41 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
             int lenV = 0, l = i;
             while (l < LIGNES && (grille[l][j] % 10) == typeBase) { lenV++; l++; }
 
+            // --- NOUVEAU : CARRE GEANT 4x4 ---
+            // On vérifie si on a la place pour un carré 4x4
+            if (i <= LIGNES - 4 && j <= COLONNES - 4) {
+                int isBigSquare = 1;
+                // On vérifie les 16 cases
+                for(int r = 0; r < 4; r++) {
+                    for(int c = 0; c < 4; c++) {
+                        if ((grille[i+r][j+c] % 10) != typeBase) {
+                            isBigSquare = 0;
+                            break;
+                        }
+                    }
+                    if (!isBigSquare) break;
+                }
+
+                if (isBigSquare) {
+                    strcpy(message, "MEGA CARRE 4x4 !!!");
+                    // On détruit tout le bloc 4x4
+                    for(int r = 0; r < 4; r++) {
+                        for(int c = 0; c < 4; c++) {
+                            items_a_detruire[i+r][j+c] = 1;
+                        }
+                    }
+                    modif = 1;
+                    // On ne fait pas de return ici pour permettre d'autres combos si besoin,
+                    // mais le bloc sera détruit à la fin de la fonction.
+                }
+            }
+
             // A. Ligne de 6+
             if (lenH >= 6 || lenV >= 6) {
                 effet_supprimer_couleur(grille, progression, typeBase);
                 gravite(grille);
                 modif_grille(grille);
-                resoudre_plateau(grille, progression); 
+                resoudre_plateau(grille, progression, message); 
                 return 1;
             }
             // B. Croix de 9
@@ -130,10 +158,10 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
                 effet_croix_explosion(grille, progression, i, j);
                 gravite(grille);
                 modif_grille(grille);
-                resoudre_plateau(grille, progression);
+                resoudre_plateau(grille, progression, message);
                 return 1;
             }
-            // C. Ligne de 5 : Création BOMBE
+            // C. Ligne de 5
             if (lenH == 5) {
                 for(int m=0; m<lenH; m++) items_a_detruire[i][j+m] = 1;
                 creation_special[i][j+2] = typeBase + 10; 
@@ -158,7 +186,7 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
                         effet_bombe(grille, progression, i, j + 1);
                         gravite(grille);
                         modif_grille(grille);
-                        resoudre_plateau(grille, progression);
+                        resoudre_plateau(grille, progression, message);
                         return 1;
                     }
                     modif = 1;
@@ -173,7 +201,7 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
                         effet_bombe(grille, progression, i + 1, j);
                         gravite(grille);
                         modif_grille(grille);
-                        resoudre_plateau(grille, progression);
+                        resoudre_plateau(grille, progression, message);
                         return 1;
                     }
                     modif = 1;
@@ -183,6 +211,8 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
             if (i < LIGNES-1 && j < COLONNES-1) {
                 if ((grille[i][j]%10) == typeBase && (grille[i+1][j]%10) == typeBase &&
                     (grille[i][j+1]%10) == typeBase && (grille[i+1][j+1]%10) == typeBase) {
+                        // On vérifie que ce n'est pas déjà inclus dans un carré 4x4
+                        // (simplification : on marque quand même, les doublons ne gênent pas)
                         items_a_detruire[i][j] = 1; items_a_detruire[i+1][j] = 1;
                         items_a_detruire[i][j+1] = 1; items_a_detruire[i+1][j+1] = 1;
                         modif = 1;
@@ -208,7 +238,7 @@ int resoudre_plateau(int grille[LIGNES][COLONNES], int progression[6]) {
         }
         gravite(grille);
         modif_grille(grille);
-        resoudre_plateau(grille, progression); 
+        resoudre_plateau(grille, progression, message); 
     }
     return modif;
 }
@@ -260,7 +290,7 @@ int verif_victoire(int objectifs[6], int progression[6]) {
 
 void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int objectifs[6], int progression[6], int tempsRestant) {
     text_color(WHITE);
-    printf("====================================================\n"); // Ligne raccourcie
+    printf("====================================================\n");
     printf(" JOUEUR: %s | NIV: %d | VIES: %d | COUPS: %d | TEMPS: ", pseudo, niveau, vies, coups);
     
     if (tempsRestant <= 10) text_color(LIGHTRED);
@@ -268,14 +298,14 @@ void afficherInfosHUD(char pseudo[], int niveau, int coups, int vies, int object
     printf("%ds", tempsRestant);
     text_color(WHITE); 
     
-    printf("\n====================================================\n"); // Ligne raccourcie
+    printf("\n====================================================\n");
     printf(" CONTRAT (Pierres a collecter) :\n");
     
     int a_un_objectif = 0;
     for (int i = 1; i <= 5; i++) {
         if (objectifs[i] > 0) {
             text_color(CODE_COULEURS[i]);
-            printf("  %s", NOM_PIERRES[i]); // Utilise NOM_PIERRES (Emeraude, etc.)
+            printf("  %s", NOM_PIERRES[i]);
             text_color(WHITE);
             printf(" : %d / %d", progression[i], objectifs[i]);
             if (progression[i] >= objectifs[i]) {
@@ -332,7 +362,7 @@ void afficherPlateau(int grille[LIGNES][COLONNES], int cX, int cY, int selActive
             else if (estSelectionne) printf("*");
             else printf(" "); 
         }
-        printf("\n"); // Enlevé le double \n pour réduire la hauteur et éviter le scrolling
+        printf("\n"); 
     }
     text_color(WHITE);
 }
@@ -357,7 +387,8 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
     
     creation_grille(grille);
     int poubelle[6] = {0}; 
-    resoudre_plateau(grille, poubelle); 
+    char tmp[100] = "";
+    resoudre_plateau(grille, poubelle, tmp); 
 
     genererObjectifs(niveau, objectifs);
 
@@ -397,9 +428,8 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
         }
 
         if (besoinRafraichissement) {
-            // FIX POUR L'AFFICHAGE QUI SCROLLE :
-            // Si clrscr() ne marche pas, essayez de décommenter la ligne suivante :
-            // system("cls"); 
+            // Si l'affichage bugue (scrolling), décommentez la ligne suivante :
+            // system("cls");
             clrscr();
             
             if(tempsRestant < 0) tempsRestant = 0;
@@ -427,7 +457,9 @@ int lancerNiveau(char pseudo[], int niveau, int *vies) {
                         if (dist == 1) {
                             int tmp = grille[cX][cY]; grille[cX][cY] = grille[sX][sY]; grille[sX][sY] = tmp;
                             
-                            int combo = resoudre_plateau(grille, progression);
+                            // On crée une variable dummy pour le message (non affiché)
+                            char dummyMsg[100] = "";
+                            int combo = resoudre_plateau(grille, progression, dummyMsg);
                             
                             if (combo) {
                                 coups--; 
@@ -492,33 +524,27 @@ int chargerSauvegarde(char pseudo[], int *niveau, int *vies) {
 void afficherRegles() {
     clrscr();
     text_color(LIGHTCYAN);
-    printf("=========================================================\n");
-    printf("                  REGLES DU JEU : ECE HEROES             \n");
-    printf("=========================================================\n\n");
+    printf("====================================================\n");
+    printf("             REGLES DU JEU : ECE HEROES             \n");
+    printf("====================================================\n\n");
     text_color(WHITE);
     printf("1. PRINCIPE :\n");
-    printf("   Associez au moins 3 items identiques pour les faire\n");
-    printf("   disparaitre et remplir votre contrat.\n\n");
+    printf("   Associez au moins 3 pierres identiques pour remplir\n");
+    printf("   le contrat.\n\n");
     printf("2. COMMANDES :\n");
     printf("   - Z/Q/S/D : Deplacer le curseur.\n");
-    printf("   - ESPACE  : Selectionner/Permuter un item.\n");
-    printf("   - P       : Abandonner le niveau en cours.\n\n");
-    printf("3. OBJECTIFS :\n");
-    printf("   Chaque niveau a un contrat (nombre d'items a eliminer)\n");
-    printf("   a remplir en un temps et un nombre de coups limites.\n\n");
-    printf("4. VIES :\n");
-    printf("   Vous commencez avec %d vies. Echouer a un niveau vous\n", VIES_INIT);
-    printf("   fait perdre une vie.\n\n");
-    printf("5. EXTENSIONS & BONUS :\n");
+    printf("   - ESPACE  : Selectionner/Permuter.\n");
+    printf("   - P       : Abandonner.\n\n");
+    printf("3. BONUS :\n");
     printf("   - Ligne de 5 : Cree une BOMBE (Fond colore).\n");
-    printf("   - Bombe + 2 items : EXPLOSION DE ZONE (Carre).\n");
+    printf("   - Bombe + 2 items : EXPLOSION DE ZONE (3x3).\n");
     printf("   - Ligne de 6 : Detruit toute la couleur.\n");
-    printf("   - Croix (5+5) : Explosion Ligne + Colonne.\n\n");
-    printf("=========================================================\n");
-    printf("Appuyez sur une touche pour revenir au menu...");
+    printf("   - Croix (5+5) : Explosion Ligne + Colonne.\n");
+    printf("   - CARRE 4x4 : Detruit le bloc entier !\n\n");
+    printf("====================================================\n");
+    printf("Appuyez sur une touche...");
     getch();
 }
-
 
 int main() {
     srand(time(NULL));
