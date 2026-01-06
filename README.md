@@ -14,7 +14,7 @@ Le jeu se joue en ligne de commande ou utilise une bibliothèque simple pour l'a
 
 ### ✨ Fonctionnalités Principales
 
-* **Grille de Jeu $N \times M$ :** Configuration facile des dimensions de la grille.
+* **Grille de Jeu :** Configuration facile des dimensions de la grille.
 * **Système de Swap :** Échange de bonbons adjacents par coordonnées.
 * **Algorithme de Détection :** Identification et validation de **matches de 3 bonbons ou plus** (horizontal et vertical).
 * **Mécanique de Gravité :** Chute des bonbons après un match et génération de nouveaux bonbons pour remplir la grille.
@@ -25,7 +25,8 @@ Le jeu se joue en ligne de commande ou utilise une bibliothèque simple pour l'a
 
 * **Langage :** C (Standard C99 / ANSI C)
 * **Compilateur :** GCC (GNU Compiler Collection)
-* **Bibliothèque Graphique (Optionnel) :** *[Si vous utilisez SDL, Allegro, etc., listez-le ici. Sinon, vous pouvez supprimer cette ligne ou la remplacer par :* `Interface en ligne de commande (ASCII Art).` *]*
+* **Bibliothèque Graphique (Optionnel) :** 
+*  `Interface en ligne de commande (ASCII Art).` *]*
 
 ## 🚀 Installation et Démarrage
 
